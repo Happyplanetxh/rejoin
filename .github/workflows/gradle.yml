@@ -22,12 +22,6 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    defaults:
-
-      run:
-
-        working-directory: LoginAssistant-source
-
     steps:
 
       - name: Checkout repository
@@ -90,7 +84,7 @@ jobs:
 
           name: LoginAssistant-JAR
 
-          path: LoginAssistant-source/build/libs/*.jar
+          path: build/libs/*.jar
 
           if-no-files-found: error
 
