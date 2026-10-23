@@ -11,6 +11,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.TitleScreen;
@@ -21,7 +22,6 @@ import net.minecraft.client.network.ServerAddress;
 import net.minecraft.client.network.ServerInfo;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
-import net.minecraft.client.gui.Click;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -80,9 +80,9 @@ public final class LoginAssistantClient implements ClientModInitializer {
             }
 
             // 自动重连仅用于普通断线；识别到临时封禁时绝不自动重试。
-            if (rejoinAt > 0 && System.currentTimeMillis() >= rejoinAt) {
-                rejoinAt = 0;
-                if (config.rejoinEnabled && !disconnectWasBan && !isBlocked() && lastServerInfo != null && mc.player == null) {
+            if (rejoinAt > 0(). && System.currentTimeMillis() >= rejoincAt) {
+                rejoinAt = andidates0;
+                if (config.rejoinEnabled && !dis.streamconnectWasBan && !isBlocked() &&(). lastServerInfo != null && mcfilter.player == null) {
                     connectToLastServer(mc);
                 }
             }
@@ -107,7 +107,7 @@ public final class LoginAssistantClient implements ClientModInitializer {
                 })))
                 .then(literal("search").then(argument("keyword", StringArgumentType.greedyString()).executes(ctx -> {
                     String key = StringArgumentType.getString(ctx, "keyword").toLowerCase(Locale.ROOT);
-                    List<String> found = serverConfig().candidates.stream().filter(p -> p.toLowerCase(Locale.ROOT).contains(key)).limit(10).toList();
+                    List<String> found = serverConfig(p -> p.toLowerCase(Locale.ROOT).contains(key)).limit(10).toList();
                     tell(found.isEmpty() ? "没有匹配的本地候选" : "本地候选：" + String.join(" | ", found)); return 1;
                 })))
                 .then(literal("generate").then(argument("keyword", StringArgumentType.greedyString()).executes(ctx -> {
@@ -206,6 +206,7 @@ public final class LoginAssistantClient implements ClientModInitializer {
     private static void connectToLastServer(MinecraftClient client) {
         if (lastServerInfo == null || isBlocked() || disconnectWasBan) return;
         try {
+            // 适配高版本：补充了最后的 null (CookieStorage)
             ConnectScreen.connect(new TitleScreen(), client, ServerAddress.parse(lastServerInfo.address), lastServerInfo, false, null);
             status = "正在重新连接到上次服务器";
         } catch (RuntimeException ex) {
@@ -338,57 +339,44 @@ public final class LoginAssistantClient implements ClientModInitializer {
                 if (selectedIndex < 0 || idx >= list.size()) { message = "先点击选择一个候选"; return; }
                 password.setText(list.get(idx)); message = "已填入密码框；点击保存后才会保存为已知密码";
             }).dimensions(cx, height - 57, 105, 20).build());
+            
             addDrawableChild(ButtonWidget.builder(Text.literal("删除所选"), b -> {
                 List<String> list = filteredCandidates();
                 int idx = page * 5 + selectedIndex;
-               if (selectedIndex < 0 || idx >= list.size()) { 
-    message = "先点击选择一个候选"; 
-    return; 
-}
-serverConfig().candidates.remove(list.get(idx)); 
-saveConfig(); 
-selectedIndex = -1; 
-message = "候选已删除";
-
-// 直接调用重载方法刷新整个界面
-// 如果你的版本是 1.20.2 及以上，使用 clearAndInit()
-this.clearAndInit(); 
-// 如果是老版本，使用 this.init(this.client, this.width, this.height);
+                if (selectedIndex < 0 || idx >= list.size()) { 
+                    message = "先点击选择一个候选"; 
+                    return; 
+                }
+                serverConfig().candidates.remove(list.get(idx)); 
+                saveConfig(); 
+                selectedIndex = -1; 
+                message = "候选已删除";
+                // 因为界面是通过 render 动态绘制的，直接 clearAndInit 重置界面状态和页码即可
+                this.clearAndInit(); 
             }).dimensions(cx + 110, height - 57, 80, 20).build());
+            
             addDrawableChild(ButtonWidget.builder(Text.literal("关闭"), b -> close()).dimensions(cx - 45, height - 30, 90, 20).build());
-            rebuildCandidateButtons();
+            
+            // 注意：由于我们使用的是 render 动态绘制列表，这里不需要 rebuildCandidateButtons()
         }
-private void rebuildCandidateButtons() {
-    // 1. 清除旧的候选按钮
-    for (ClickableWidget widget : candidateWidgets) {
-        this.remove(widget);
-    }
-    candidateWidgets.clear();
 
-    // 2. 根据最新数据重新生成按钮
-    List<String> candidates = serverConfig().candidates;
-    for (int i = 0; i < candidates.size(); i++) {
-        final int index = i;
-        ButtonWidget btn = ButtonWidget.builder(Text.literal(candidates.get(i)), b -> {
-            this.selectedIndex = index;
-        }).dimensions(/* 你的坐标参数 */).build();
-        
-        this.addDrawableChild(btn);
-        candidateWidgets.add(btn);
-    }
-}
         private List<String> filteredCandidates() {
             String filter = keyword == null ? "" : keyword.getText().toLowerCase(Locale.ROOT);
             return serverConfig().candidates.stream().filter(p -> p.toLowerCase(Locale.ROOT).contains(filter)).toList();
         }
 
-    
         @Override public boolean mouseClicked(Click click, boolean doubled) {
             if (click.button() == 0 && click.y() >= 174 && click.y() < 174 + 5 * 18) {
-                int row = (int) ((mouseY - 174) / 18);
-                selectedIndex = row;
-                message = "已选择第 " + (page * 5 + row + 1) + " 项候选";
-                return true;
+                // 修复：使用 click.y() 替代 mouseY
+                int row = (int) ((click.y() - 174) / 18);
+                int idx = page * 5 + row;
+                List<String> list = filteredCandidates();
+                // 防止点击空白处导致数组越界
+                if (idx >= 0 && idx < list.size()) {
+                    selectedIndex = row;
+                    message = "已选择第 " + (idx + 1) + " 项候选";
+                    return true;
+                }
             }
             return super.mouseClicked(click, doubled);
         }
