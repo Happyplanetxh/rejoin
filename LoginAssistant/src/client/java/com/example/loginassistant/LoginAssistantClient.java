@@ -205,7 +205,7 @@ public final class LoginAssistantClient implements ClientModInitializer {
     private static void connectToLastServer(MinecraftClient client) {
         if (lastServerInfo == null || isBlocked() || disconnectWasBan) return;
         try {
-            ConnectScreen.connect(new TitleScreen(), client, ServerAddress.parse(lastServerInfo.address), lastServerInfo, false);
+            ConnectScreen.connect(new TitleScreen(), client, ServerAddress.parse(lastServerInfo.address), lastServerInfo, false, null);
             status = "正在重新连接到上次服务器";
         } catch (RuntimeException ex) {
             status = "重连失败：" + ex.getClass().getSimpleName();
@@ -340,8 +340,19 @@ public final class LoginAssistantClient implements ClientModInitializer {
             addDrawableChild(ButtonWidget.builder(Text.literal("删除所选"), b -> {
                 List<String> list = filteredCandidates();
                 int idx = page * 5 + selectedIndex;
-                if (selectedIndex < 0 || idx >= list.size()) { message = "先点击选择一个候选"; return; }
-                serverConfig().candidates.remove(list.get(idx)); saveConfig(); selectedIndex = -1; message = "候选已删除";
+               if (selectedIndex < 0 || idx >= list.size()) { 
+    message = "先点击选择一个候选"; 
+    return; 
+}
+serverConfig().candidates.remove(list.get(idx)); 
+saveConfig(); 
+selectedIndex = -1; 
+message = "候选已删除";
+
+// 直接调用重载方法刷新整个界面
+// 如果你的版本是 1.20.2 及以上，使用 clearAndInit()
+this.clearAndInit(); 
+// 如果是老版本，使用 this.init(this.client, this.width, this.height);
             }).dimensions(cx + 110, height - 57, 80, 20).build());
             addDrawableChild(ButtonWidget.builder(Text.literal("关闭"), b -> close()).dimensions(cx - 45, height - 30, 90, 20).build());
             rebuildCandidateButtons();
@@ -352,15 +363,15 @@ public final class LoginAssistantClient implements ClientModInitializer {
             return serverConfig().candidates.stream().filter(p -> p.toLowerCase(Locale.ROOT).contains(filter)).toList();
         }
 
-
-        @Override public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    import net.minecraft.client.gui.Click;
+        @Override public boolean mouseClicked(Click click, boolean doubled) {
             if (button == 0 && mouseY >= 174 && mouseY < 174 + 5 * 18) {
                 int row = (int) ((mouseY - 174) / 18);
                 selectedIndex = row;
                 message = "已选择第 " + (page * 5 + row + 1) + " 项候选";
                 return true;
             }
-            return super.mouseClicked(mouseX, mouseY, button);
+            return super.mouseClicked(click, doubled);
         }
 
         @Override public void render(DrawContext context, int mouseX, int mouseY, float delta) {
