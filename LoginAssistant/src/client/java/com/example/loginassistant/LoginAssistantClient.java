@@ -358,7 +358,25 @@ this.clearAndInit();
             addDrawableChild(ButtonWidget.builder(Text.literal("关闭"), b -> close()).dimensions(cx - 45, height - 30, 90, 20).build());
             rebuildCandidateButtons();
         }
+private void rebuildCandidateButtons() {
+    // 1. 清除旧的候选按钮
+    for (ClickableWidget widget : candidateWidgets) {
+        this.remove(widget);
+    }
+    candidateWidgets.clear();
 
+    // 2. 根据最新数据重新生成按钮
+    List<String> candidates = serverConfig().candidates;
+    for (int i = 0; i < candidates.size(); i++) {
+        final int index = i;
+        ButtonWidget btn = ButtonWidget.builder(Text.literal(candidates.get(i)), b -> {
+            this.selectedIndex = index;
+        }).dimensions(/* 你的坐标参数 */).build();
+        
+        this.addDrawableChild(btn);
+        candidateWidgets.add(btn);
+    }
+}
         private List<String> filteredCandidates() {
             String filter = keyword == null ? "" : keyword.getText().toLowerCase(Locale.ROOT);
             return serverConfig().candidates.stream().filter(p -> p.toLowerCase(Locale.ROOT).contains(filter)).toList();
@@ -366,7 +384,7 @@ this.clearAndInit();
 
     
         @Override public boolean mouseClicked(Click click, boolean doubled) {
-            if (button == 0 && mouseY >= 174 && mouseY < 174 + 5 * 18) {
+            if (click.button() == 0 && click.y() >= 174 && click.y() < 174 + 5 * 18) {
                 int row = (int) ((mouseY - 174) / 18);
                 selectedIndex = row;
                 message = "已选择第 " + (page * 5 + row + 1) + " 项候选";
