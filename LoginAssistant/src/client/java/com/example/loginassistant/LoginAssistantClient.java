@@ -80,9 +80,9 @@ public final class LoginAssistantClient implements ClientModInitializer {
             }
 
             // 自动重连仅用于普通断线；识别到临时封禁时绝不自动重试。
-            if (rejoinAt > 0(). && System.currentTimeMillis() >= rejoincAt) {
-                rejoinAt = andidates0;
-                if (config.rejoinEnabled && !dis.streamconnectWasBan && !isBlocked() &&(). lastServerInfo != null && mcfilter.player == null) {
+            if (rejoinAt > 0 && System.currentTimeMillis() >= rejoinAt) {
+                rejoinAt = 0;
+                if (config.rejoinEnabled && !disconnectWasBan && !isBlocked() && lastServerInfo != null && mc.player == null) {
                     connectToLastServer(mc);
                 }
             }
@@ -107,7 +107,7 @@ public final class LoginAssistantClient implements ClientModInitializer {
                 })))
                 .then(literal("search").then(argument("keyword", StringArgumentType.greedyString()).executes(ctx -> {
                     String key = StringArgumentType.getString(ctx, "keyword").toLowerCase(Locale.ROOT);
-                    List<String> found = serverConfig(p -> p.toLowerCase(Locale.ROOT).contains(key)).limit(10).toList();
+                    List<String> found = serverConfig().candidates.stream().filter(p -> p.toLowerCase(Locale.ROOT).contains(key)).limit(10).toList();
                     tell(found.isEmpty() ? "没有匹配的本地候选" : "本地候选：" + String.join(" | ", found)); return 1;
                 })))
                 .then(literal("generate").then(argument("keyword", StringArgumentType.greedyString()).executes(ctx -> {
@@ -160,7 +160,6 @@ public final class LoginAssistantClient implements ClientModInitializer {
         }
     }
 
-    /** Called by the mixin when Minecraft receives a disconnect reason. */
     public static void onDisconnectReason(Text reason) {
         if (reason == null) return;
         String raw = reason.getString();
@@ -206,7 +205,6 @@ public final class LoginAssistantClient implements ClientModInitializer {
     private static void connectToLastServer(MinecraftClient client) {
         if (lastServerInfo == null || isBlocked() || disconnectWasBan) return;
         try {
-            // 适配高版本：补充了最后的 null (CookieStorage)
             ConnectScreen.connect(new TitleScreen(), client, ServerAddress.parse(lastServerInfo.address), lastServerInfo, false, null);
             status = "正在重新连接到上次服务器";
         } catch (RuntimeException ex) {
@@ -351,13 +349,10 @@ public final class LoginAssistantClient implements ClientModInitializer {
                 saveConfig(); 
                 selectedIndex = -1; 
                 message = "候选已删除";
-                // 因为界面是通过 render 动态绘制的，直接 clearAndInit 重置界面状态和页码即可
                 this.clearAndInit(); 
             }).dimensions(cx + 110, height - 57, 80, 20).build());
             
             addDrawableChild(ButtonWidget.builder(Text.literal("关闭"), b -> close()).dimensions(cx - 45, height - 30, 90, 20).build());
-            
-            // 注意：由于我们使用的是 render 动态绘制列表，这里不需要 rebuildCandidateButtons()
         }
 
         private List<String> filteredCandidates() {
@@ -367,11 +362,9 @@ public final class LoginAssistantClient implements ClientModInitializer {
 
         @Override public boolean mouseClicked(Click click, boolean doubled) {
             if (click.button() == 0 && click.y() >= 174 && click.y() < 174 + 5 * 18) {
-                // 修复：使用 click.y() 替代 mouseY
                 int row = (int) ((click.y() - 174) / 18);
                 int idx = page * 5 + row;
                 List<String> list = filteredCandidates();
-                // 防止点击空白处导致数组越界
                 if (idx >= 0 && idx < list.size()) {
                     selectedIndex = row;
                     message = "已选择第 " + (idx + 1) + " 项候选";
