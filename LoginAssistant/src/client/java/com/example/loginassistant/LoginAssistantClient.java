@@ -21,6 +21,7 @@ import net.minecraft.client.network.ServerAddress;
 import net.minecraft.client.network.ServerInfo;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.minecraft.client.gui.Click;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -363,7 +364,7 @@ this.clearAndInit();
             return serverConfig().candidates.stream().filter(p -> p.toLowerCase(Locale.ROOT).contains(filter)).toList();
         }
 
-    import net.minecraft.client.gui.Click;
+    
         @Override public boolean mouseClicked(Click click, boolean doubled) {
             if (button == 0 && mouseY >= 174 && mouseY < 174 + 5 * 18) {
                 int row = (int) ((mouseY - 174) / 18);
